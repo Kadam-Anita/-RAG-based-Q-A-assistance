@@ -1,0 +1,46 @@
+# Render Blueprint: deploys the Ollama server (private) and the Streamlit app (public).
+services:
+  # ---- Ollama: private service, reachable only from your other Render services ----
+  - type: pserv
+    name: ollama
+    runtime: docker
+    dockerfilePath: ./Dockerfile.ollama
+    dockerContext: .
+    plan: standard            # needs about 2 GB RAM for gemma3:1b; use a larger plan for bigger models
+    envVars:
+      - key: OLLAMA_MODEL
+        value: gemma3:1b
+      - key: OLLAMA_EMBED_MODEL
+        value: nomic-embed-text
+    disk:
+      name: ollama-models     # keeps downloaded models across restarts
+      mountPath: /root/.ollama
+      sizeGB: 10
+
+  # ---- Streamlit app ----
+  - type: web
+    name: rag-app
+    runtime: python
+    plan: starter             # raise to standard if you see out-of-memory restarts on large PDFs
+    buildCommand: pip install -r requirements.txt
+    startCommand: streamlit run app.py --server.port $PORT --server.address 0.0.0.0
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: OLLAMA_BASE_URL
+        fromService:
+          type: pserv
+          name: ollama
+          property: hostport  # e.g. ollama:10000 (the app adds http:// automatically)
+      - key: OLLAMA_MODEL
+        value: gemma3:1b
+      - key: OLLAMA_EMBED_MODEL
+        value: nomic-embed-text
+      - key: STREAMLIT_SERVER_HEADLESS
+        value: "true"
+      - key: STREAMLIT_SERVER_MAX_UPLOAD_SIZE
+        value: "50"
+      - key: STREAMLIT_SERVER_FILE_WATCHER_TYPE
+        value: none
+      - key: STREAMLIT_BROWSER_GATHER_USAGE_STATS
+        value: "false"

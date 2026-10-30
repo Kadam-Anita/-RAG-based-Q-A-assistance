@@ -1,0 +1,12 @@
+FROM ollama/ollama:latest
+
+# Listen on all interfaces and keep models loaded in memory between requests.
+ENV OLLAMA_HOST=0.0.0.0:11434 \
+    OLLAMA_KEEP_ALIVE=30m
+
+COPY ollama-start.sh /usr/local/bin/ollama-start.sh
+# Strip Windows line endings (CRLF) so the script runs even if edited on Windows.
+RUN sed -i 's/\r$//' /usr/local/bin/ollama-start.sh && chmod +x /usr/local/bin/ollama-start.sh
+
+EXPOSE 11434
+ENTRYPOINT ["/usr/local/bin/ollama-start.sh"]
